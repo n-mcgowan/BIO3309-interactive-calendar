@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Student Practical Group Calendar</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: lightgray;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 15px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+      overflow: hidden;
+    }
+
+    .header {
+      background-color: red;
+      color: white;
+      padding: 30px;
+      text-align: center;
+    }
+
+    .header h1 { font-size: 2.2rem; font-weight: 300; margin-bottom: 6px; }
+    .header p { opacity: 0.95; }
+
+    .calendar-nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 24px;
+      background: #f8f9fa;
+      border-bottom: 1px solid #dee2e6;
+    }
+
+     .download-btn {
+      background: white;
+      color: #495057;
+      border: 2px solid rgba(255,0,0,0.2);
+      padding: 8px 16px;
+      border-radius: 20px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.2s ease;
+      margin-top: 10px;
+    }
+
+    .download-btn:hover {
+      background: #BF0000;
+      color: white;
+      transform: translateY(-1px);
+    }
+    
+    .nav-btn {
+      background: #007bff;
+      color: white;
+      border: none;
+      padding: 8px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    
+    .nav-btn:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+      opacity: 0.6;
+    }
+    
+    .month-year { font-size: 1.25rem; font-weight: 600; color: #2c3e50; }
+
+    /* Calendar grid */
+    .calendar {
+      display: grid;
+      grid-template-columns: repeat(7,  minmax(0, 1fr));
+      gap: 1px;
+      background: #dee2e6;
+      margin: 20px;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .day-header {
+      background: #495057;
+      color: white;
+      padding: 10px;
+      text-align: center;
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    /* Fixed-size day cells (keeps each day same height) */
+    .day {
+      background: white;
+      height: 140px;         /* <-- fixed height for each day cell */
+      padding: 8px;
+      position: relative;
+      overflow: hidden;
+      min-width: 0;
+    }
+
+    .day:hover {
+      background: #f8f9fa;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+      z-index: 5;
+    }
+
+    .day-number { font-weight: 600; margin-bottom: 6px; color: #495057; }
+
+    .other-month { color: #adb5bd; background: #f8f9fa; }
+
+    .today {
+      background: #fff3cd !important;
+      border: 2px solid #ffc107;
+    }
+
+    .session {
+      display: block;
+      color: white;
+      padding: 4px 6px;
+      margin: 2px 0;
+      border-radius: 4px;
+      font-size: 11px;
+      cursor: pointer;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .session:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.12); }
+
+    /* Format + Module-based classes - used by JS: e.g. "lecture bioXXXX" */
+    /* BIO3309 */
+    .lecture.bio3309 { background-color: yellow; color: #111}
+    .computer.bio3309 { background-color: #74B72E; color: white}
+    .assessment.bio3309 { background-color: red; color: #111;
+    }
+
+    /* modal */
+    .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); backdrop-filter: blur(4px); }
+    .modal.show { display: block; }
+    .modal-content {
+      background-color: white;
+      margin: 8% auto;
+      padding: 22px;
+      border-radius: 12px;
+      width: 92%;
+      max-width: 640px;
+      box-shadow: 0 18px 40px rgba(0,0,0,0.25);
+      transform: translateY(-20px);
+      opacity: 0;
+      transition: all 0.24s ease;
+    }
+    .modal.show .modal-content { transform: translateY(0); opacity: 1; }
+    .close { float: right; font-size: 26px; font-weight: 700; cursor: pointer; color: #777; }
+    .modal h2 { color: #2c3e50; margin-bottom: 10px; }
+
+    .modal-info { display: grid; gap: 10px; }
+    .info-row { display:flex; gap:12px; align-items:center; padding:8px; background:#f8f9fa; border-radius:8px; }
+    .info-label { min-width: 110px; font-weight:600; color:#495057; }
+    .staff-badge { display:inline-block; background:#007bff; color:white; padding:4px 10px; border-radius:12px; font-weight:600; }
+    .module-badge { display:inline-block; padding:4px 10px; border-radius:12px; font-weight:600; color:white; }
+
+    .module-bio-3309 { background: #4facfe; }  /* blue */
+
+    /* Legend */
+    .legend { display:flex; justify-content:center; gap:18px; padding:18px; background:#f8f9fa; flex-wrap:wrap; border-top:1px solid #eee; }
+    .legend-item { display:flex; gap:8px; align-items:center; font-weight:600; color:#333; }
+    .legend-color { width:24px; height:16px; border-radius:4px; border:1px solid rgba(0,0,0,0.05); }
+
+    /* legend colors matching classes above */
+    .legend-color.bio3309-lecture        { background:yellow;  }
+    .legend-color.bio3309-computer       { background: #74B72E;}
+    .legend-color.bio3309-assessment     { background:red;     }
+
+    .no-sessions { text-align:center; padding:40px; color:#6c757d; font-style:italic; }
+
+    @media (max-width: 900px) {
+      .day { height: 110px; }
+      .group-selector select { width: 100%; max-width: 240px; }
+    }
+
+    @media (max-width: 560px) {
+      .header h1 { font-size: 1.4rem; }
+      .day { height: 100px; padding:6px; }
+      .session { font-size:10px; padding:3px 5px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>BIO3309 Course Calendar</h1>
+      <button class="download-btn" onclick="downloadICS()">
+        Download Calendar
+        </button>
+    </div>
+
+    <div class="calendar-nav">
+      <button class="nav-btn" onclick="previousMonth()">← Previous</button>
+      <div class="month-year" id="monthYear"></div>
+      <button class="nav-btn" onclick="nextMonth()">Next →</button>
+    </div>
+
+    <!-- LEGEND: only lectures & labs (class tests & feedback removed from legend) -->
+    <div class="legend">
+      <div class="legend-item">
+        <div class="legend-color bio3309-lecture"></div>
+        <span>BIO3309 Lectures</span>
+      </div>
+     <div class="legend-item">
+        <div class="legend-color bio3309-assessment"></div>
+        <span>BIO3309 Assessments</span>
+    </div> 
+       <<div class="legend-item">
+        <div class="legend-color bio3309-computer"></div>
+        <span>BIO3309 Computer Classes</span>
+    </div>
+
+    <div class="calendar" id="calendar"></div>
+
+    <div class="no-sessions" id="noSessions" style="display: none;">
+    </div>
+  </div>
+
+  <!-- Modal -->
+  <div id="sessionModal" class="modal" aria-hidden="true">
+    <div class="modal-content" role="dialog" aria-modal="true">
+      <span class="close" aria-label="Close">&times;</span>
+      <h2>Session Details</h2>
+      <div class="modal-info">
+        <div class="info-row"><div class="info-label">Date & Time:</div><div class="info-value" id="modalDateTime"></div></div>
+        <div class="info-row"><div class="info-label">Session:</div><div class="info-value" id="modalLecture"></div></div>
+        <div class="info-row"><div class="info-label">Location:</div><div class="info-value" id="modalLocation"></div></div>
+        <div class="info-row"><div class="info-label">Staff:</div><div class="info-value"><span id="modalStaff" class="staff-badge"></span></div></div>
+        <div class="info-row"><div class="info-label">Module:</div><div class="info-value"><span id="modalModule" class="module-badge"></span></div></div>
+        <div class="info-row"><div class="info-label">Format:</div><div class="info-value" id="modalFormat"></div></div>
+        <div class="info-row"><div class="info-label">Week:</div><div class="info-value" id="modalWeek"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // --- your original sessionData preserved exactly (unchanged) ---
+    const sessionData = [
+      // Week 1
+      {week: 1, date: '2026-09-21', time: '13:00 - 14:00', location: 'BSB/LG/023', day: 'M', lecture: 'Module Introduction', staff: 'NMG', format: 'Lecture', module: 'BIO3309'},
+      
+      // Week 2
+      {week: 2, date: '2026-09-28', time: '12:00 - 13:00', location: 'BSB/LG/atrium', day: 'M', lecture: 'Project Proposal Support (drop in)', staff: 'NMG', format: 'Lecture', module: 'BIO3309'},
+      {week: 2, date: '2026-09-28', time: '13:00 - 14:00', location: 'BSB/LG/023', day: 'M', lecture: 'BIO3309 Assignment Preparation', staff: 'NMG', format: 'Lecture', module: 'BIO3309'},
+      {week: 2, date: '2026-09-29', time: '11:00 - 13:00', location: 'DKB/0G/115', day: 'T', lecture: 'Library Skills (Literature Searches & Referencing', staff: 'TR', format: 'Lecture', module: 'BIO3309'},
+      
+      // Week 3
+      {week: 3, date: '2026-10-05', time: '13:00 - 14:00', location: 'BSB/LG/023', day: 'M', lecture: 'BIO3309 Q&A session', staff: 'NMG', format: 'Lecture', module: 'BIO3309'},
+      {week: 3, date: '2026-10-06', time: '11:00 - 12:00', location: 'DKB/0G/115', day: 'T', lecture: 'Bioethics', staff: 'SD', format: 'Lecture', module: 'BIO3309'},
+      {week: 3, date: '2026-10-06', time: '12:00 - 13:00', location: 'DKB/0G/115', day: 'T', lecture: 'Research Integrity', staff: 'SD', format: 'Lecture', module: 'BIO3309'},
+      
+      // Week 4
+      {week: 4, date: '2026-10-13', time: '11:00 - 12:00', location: 'DKB/0G/115', day: 'T', lecture: 'Critical Thinking', staff: 'IC', format: 'Lecture', module: 'BIO3309'},
+      {week: 4, date: '2026-10-13', time: '12:00 - 13:00', location: 'DKB/0G/115', day: 'T', lecture: 'Responsible Use of AI', staff: 'HF', format: 'Lecture', module: 'BIO3309'},
+      
+      // Week 5
+      {week: 5, date: '2026-10-20', time: '11:00 - 12:00', location: 'DKB/0G/115', day: 'T', lecture: 'Experimental Design', staff: 'NB', format: 'Lecture', module: 'BIO3309'},
+      {week: 5, date: '2026-10-20', time: '12:00 - 13:00', location: 'DKB/0G/115', day: 'T', lecture: 'Record Keeping', staff: 'NB', format: 'Lecture', module: 'BIO3309'},
+
+        //week 6 - READING WEEK
+      
+      // Week 7
+      {week: 7, date: '2026-11-03', time: '11:00 - 12:00', location: 'DKB/0G/115', day: 'T', lecture: 'Systematic Reviews & Meta-analyses', staff: 'HK', format: 'Lecture', module: 'BIO3309'},
+      {week: 7, date: '2026-11-03', time: '12:00 - 13:00', location: 'DKB/0G/115', day: 'T', lecture: 'Using Feedback', staff: 'IC', format: 'Lecture', module: 'BIO3309'},
+      
+      //Week 8
+      {week: 8, date: '2026-11-10', time: '11:00 - 12:00', location: 'DKB/0G/115', day: 'T', lecture: 'Presenting Results of Qualitative Studies', staff: 'IC', format: 'Lecture', module: 'BIO3309'},
+        
+      //week 9
+      {week: 9, date: '2026-11-16', time: '13:00 - 16:00', location: 'Computer Assessment Centre', day: 'M', lecture: 'Stats I: t-tests, ANOVAs & non-parametric tests', staff: 'IC', format: 'Computer', module: 'BIO3309'},
+      {week: 9, date: '2026-11-17', time: '11:00 - 12:00', location: 'DKB/0G/115', day: 'T', lecture: 'Qualitative Methods', staff: 'SD', format: 'Lecture', module: 'BIO3309'},
+      {week: 9, date: '2026-11-17', time: '12:00 - 13:00', location: 'DKB/0G/115', day: 'T', lecture: 'Pedagogical Research', staff: 'SD', format: 'Lecture', module: 'BIO3309'},
+     
+      //week 10
+      {week: 10, date: '2026-11-23', time: '13:00 - 16:00', location: 'Computer Assessment Centre', day: 'M', lecture: 'Stats II: Correlations & Regressions', staff: 'KST', format: 'Computer', module: 'BIO3309'},
+      {week: 10, date: '2026-11-24', time: '11:00 - 12:00', location: 'DKB/0G/115', day: 'T', lecture: 'BIO3309 Dissertation Information + Q&A', staff: 'NMG', format: 'Lecture', module: 'BIO3309'},
+            
+      //Week 11
+      {week: 11, date: '2026-11-30', time: '13:00 - 15:00', location: 'BSB/Teaching lab', day: 'M', lecture: 'Stats III: Chi squared tests', staff: 'NMG', format: 'Computer', module: 'BIO3309'},
+            
+      //Week 12
+            
+      //Week 13
+      
+      //Week 14
+
+      //Week 15
+
+      //Week 16
+
+      //Week 17
+
+      //Week 18
+
+      //Week 19
+
+      //Week 20
+      {week: 20, date: '2027-02-02', time: '11:00 - 12:00', location: 'DKB/0G/115', day: 'T', lecture: 'Science Communication & Lay Summaries', staff: 'SD', format: 'Lecture', module: 'BIO3309'},
+
+      //Week 21
+
+      //Week 22
+      {week: 22, date: '2027-02-16', time: '11:00 - 12:00', location: 'DKB/0G/115', day: 'T', lecture: 'Writing a Research Report', staff: 'IC', format: 'Lecture', module: 'BIO3309'},
+
+      //Week 23
+      {week: 23, date: '2027-02-23', time: '11:00 - 12:00', location: 'DKB/0G/115', day: 'T', lecture: 'Titles & Abstracts', staff: 'IC', format: 'Lecture', module: 'BIO3309'},
+            ];
+
+    // --- calendar state & helpers ---
+    let currentDate = new Date(2026, 8, 1); // September 2026 (as you had)
+   //-- let selectedGroup = ''; ---
+
+    const monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+    const dayNames = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+
+   //function updateCalendar() { 
+   //--  selectedGroup = document.getElementById('groupSelect').value; ---
+   // renderCalendar(); ---
+ //} 
+
+    function downloadICS() {
+
+//if (!selectedGroup) return; // Safety check
+
+  let icsContent = 
+    "BEGIN:VCALENDAR\n" +
+    "VERSION:2.0\n" +
+    "CALSCALE:GREGORIAN\n" +
+    "METHOD:PUBLISH\n" +
+    "PRODID:-//Your App//Calendar//EN\n";
+
+    // Filter sessions for selected group only
+  //const filteredSessions = sessionData.filter(event => 
+  //  event.group === 'All' || event.group === selectedGroup
+  //);
+
+  sessionData.forEach(event => {
+    // Check if time range exists
+    const hasRange = event.time.includes(" - ");
+    let start, end;
+
+    if (hasRange) {
+      // e.g. "09:00 - 12:00"
+      start = new Date(event.date + "T" + event.time.split(" - ")[0] + ":00");
+      end   = new Date(event.date + "T" + event.time.split(" - ")[1] + ":00");
+    } else {
+      // e.g. "16:00" (deadline) â instant event
+      start = new Date(event.date + "T" + event.time + ":00");
+      end = start;
+    }
+
+    function formatDate(d) {
+      return d.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
+    }
+
+    icsContent +=
+      "BEGIN:VEVENT\n" +
+      `UID:${event.date}-${event.lecture.replace(/\s+/g, "")}@${event.module}\n` +
+      `DTSTAMP:${formatDate(new Date())}\n` +
+      `DTSTART:${formatDate(start)}\n` +
+      `DTEND:${formatDate(end)}\n` +
+      `SUMMARY:${event.module} - ${event.lecture}\n` +
+      `DESCRIPTION:Week ${event.week} | ${event.format} | Staff: ${event.staff}\n` +
+      (event.location ? `LOCATION:${event.location}\n` : "") +
+      "END:VEVENT\n";
+  });
+
+  icsContent += "END:VCALENDAR";
+
+  // Create downloadable blob
+  const blob = new Blob([icsContent], { type: "text/calendar;charset=utf-8" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = "LFE8044-calendar.ics";
+  link.click();
+}
+
+    function renderCalendar() {
+  const calendar = document.getElementById('calendar');
+  const monthYear = document.getElementById('monthYear');
+  const year = currentDate.getFullYear(), month = currentDate.getMonth();
+
+  monthYear.textContent = `${monthNames[month]} ${year}`;
+  
+  // Disable/enable navigation buttons - Sept to Apr only
+  document.querySelector('.nav-btn:first-child').disabled =
+    (year === 2026 && month === 8);  // September
+  document.querySelector('.nav-btn:last-child').disabled =
+    (year === 2027 && month === 3); // April
+    
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const prevMonthDays = new Date(year, month, 0).getDate();
+
+  calendar.innerHTML = '';
+
+  // Headers
+  dayNames.forEach(d => {
+    const h = document.createElement('div');
+    h.className = 'day-header';
+    h.textContent = d;
+    calendar.appendChild(h);
+  });
+
+  // Leading days from prev month
+  for (let i = firstDay - 1; i >= 0; i--) {
+    const cell = document.createElement('div');
+    cell.className = 'day other-month';
+    const num = document.createElement('div');
+    num.className = 'day-number';
+    num.textContent = prevMonthDays - i;
+    cell.appendChild(num);
+    calendar.appendChild(cell);
+  }
+
+  // Current month
+  for (let day = 1; day <= daysInMonth; day++) {
+    const cell = document.createElement('div');
+    cell.className = 'day';
+    const num = document.createElement('div');
+    num.className = 'day-number';
+    num.textContent = day;
+    cell.appendChild(num);
+
+    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+
+    // ✅ Check if this is "today"
+  const today = new Date();
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  if (dateStr === todayStr) {
+    cell.classList.add('today');
+  }
+    
+    sessionData.filter(s => s.date === dateStr).forEach(s => {
+      const el = document.createElement('div');
+      el.className = 'session';
+      if (s.format) el.classList.add(s.format.toLowerCase());
+      if (s.module) el.classList.add(s.module.toLowerCase());
+      el.innerHTML = `${s.time} ${s.lecture}`;
+      el.onclick = () => showSessionModal(s);
+      cell.appendChild(el);
+    });
+
+    calendar.appendChild(cell);
+  }
+
+  // Trailing days for next month
+  const totalCells = firstDay + daysInMonth;
+  const nextDays = 7 - (totalCells % 7 === 0 ? 7 : totalCells % 7);
+  for (let i = 1; i <= nextDays; i++) {
+    const cell = document.createElement('div');
+    cell.className = 'day other-month';
+    const num = document.createElement('div');
+    num.className = 'day-number';
+    num.textContent = i;
+    cell.appendChild(num);
+    calendar.appendChild(cell);
+  }
+}
+
+    // Modal functions
+    function showSessionModal(s) {
+      const modal = document.getElementById('sessionModal');
+      const modalDateTime = document.getElementById('modalDateTime').textContent=`${new Date(s.date).toDateString()}, ${s.time}`;
+      const modalLecture = document.getElementById('modalLecture').innerHTML=s.lecture;
+      const modalLocation = document.getElementById('modalLocation').textContent=s.location||'';
+      const modalStaff = document.getElementById('modalStaff').textContent=s.staff||'';
+      const m = document.getElementById('modalModule');
+      m.textContent=s.module;
+      m.className='module-badge module-lfe8044';
+      const modalFormat = document.getElementById('modalFormat').textContent=s.format;
+      const modalWeek = document.getElementById('modalWeek').textContent=s.week||'';
+      modal.style.display='block';setTimeout(()=>modal.classList.add('show'),10);
+      }
+
+     function closeModal(){const m=document.getElementById('sessionModal');m.classList.remove('show');setTimeout(()=>m.style.display='none',220);}
+    document.querySelector('.close').onclick=closeModal;
+    window.onclick=e=>{if(e.target===document.getElementById('sessionModal'))closeModal();}
+
+    // previous / next navigation - limit to Sept & Apr
+    function previousMonth() {
+      if (currentDate.getFullYear() === 2026 && currentDate.getMonth() === 8) {
+    return; // already at September 2026 → do nothing
+  }
+  currentDate.setMonth(currentDate.getMonth() - 1);
+  renderCalendar();
+    }
+
+    function nextMonth() {
+  if (currentDate.getFullYear() === 2027 && currentDate.getMonth() === 3) {
+    return; // already at April 2027 → do nothing
+  }
+  currentDate.setMonth(currentDate.getMonth() + 1);
+  renderCalendar();
+}
+
+ window.previousMonth=previousMonth;window.nextMonth=nextMonth;
+    renderCalendar();
+  </script>
+</body>
+</html>
